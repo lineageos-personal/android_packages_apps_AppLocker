@@ -97,7 +97,7 @@ class AuthenticateActivity : ComponentActivity() {
                 )
             }
             if (snap == null) {
-                unlockAndFinish()
+                showSystemCredentialPrompt()
                 return@launch
             }
             securitySnapshot.value = snap
@@ -231,6 +231,48 @@ class AuthenticateActivity : ComponentActivity() {
                         && errorCode != BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED
                         && errorCode != BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON
                         && errorCode != BiometricPrompt.BIOMETRIC_ERROR_CANCELED) {
+                        cancelAndFinish()
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showSystemCredentialPrompt() {
+        if (authState != AuthState.IDLE || isFinishing) return
+        authState = AuthState.PROMPT_SHOWING
+
+        val prompt = BiometricPrompt.Builder(this)
+            .setTitle("Unlock $appLabel")
+            .setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+            .build()
+
+        biometricCancellationSignal?.cancel()
+        val signal = CancellationSignal()
+        biometricCancellationSignal = signal
+
+        prompt.authenticate(
+            signal,
+            mainExecutor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                    super.onAuthenticationSucceeded(result)
+                    biometricCancellationSignal = null
+                    if (authState == AuthState.PROMPT_SHOWING) {
+                        authState = AuthState.IDLE
+                        startExitAnimation(success = true)
+                    }
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                    super.onAuthenticationError(errorCode, errString)
+                    biometricCancellationSignal = null
+                    if (authState == AuthState.PROMPT_SHOWING) {
+                        authState = AuthState.IDLE
                         cancelAndFinish()
                     }
                 }
