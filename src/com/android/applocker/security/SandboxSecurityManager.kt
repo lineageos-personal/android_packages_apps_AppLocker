@@ -111,7 +111,11 @@ class SandboxSecurityManager(private val context: Context) {
     }
     
     fun isBiometricEnabled(): Boolean {
-        return Settings.Secure.getInt(context.contentResolver, KEY_BIOMETRIC_ENABLED, 0) == 1
+        val configured = Settings.Secure.getString(context.contentResolver, KEY_BIOMETRIC_ENABLED)
+        if (configured != null) {
+            return configured == "1"
+        }
+        return isBiometricAvailable()
     }
     
     fun setBiometricEnabled(enabled: Boolean) {
@@ -122,7 +126,11 @@ class SandboxSecurityManager(private val context: Context) {
     }
 
     fun isPreferBiometric(): Boolean {
-        return Settings.Secure.getInt(context.contentResolver, KEY_PREFER_BIOMETRIC, 0) == 1
+        val configured = Settings.Secure.getString(context.contentResolver, KEY_PREFER_BIOMETRIC)
+        if (configured != null) {
+            return configured == "1"
+        }
+        return isBiometricEnabled()
     }
 
     fun setPreferBiometric(preferred: Boolean) {
